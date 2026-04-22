@@ -36,3 +36,23 @@ insert into skills_job_dim (skill_id, job_id)
 select skill_id, job_id
 from read_csv('https://storage.googleapis.com/sql_de/skills_job_dim.csv',
     auto_detect=true);
+
+select 'Company Dim' as table_name, count(*) as record_count from company_dim
+union all
+select 'Skills Dim', count(*) from skills_dim
+union all
+select 'Job Postings Fact', count(*) from job_postings_fact
+union all
+select 'Skills Job Dim', count(*) from skills_job_dim;
+
+select '=== Company Dimension Sample ===' as info;
+select * from company_dim limit 5;
+
+select '=== Skills Dimension Sample ===' as info;
+select * from skills_dim limit 5;
+
+select '=== Job Postings Fact Sample ===' as info;
+select * from job_postings_fact limit 5;
+
+select '=== Skills Job Bridge Sample ===' as info;
+select * from skills_job_dim limit 5;
