@@ -1,12 +1,12 @@
 -- Step 3: Mart - Create flat mart table
 
-drop schema if exists flat_mart cascade;
+DROP SCHEMA IF EXISTS flat_mart cascade;
 
-create schema flat_mart;
+CREATE SCHEMA flat_mart;
 
-select '=== Loading Flat Mart ===' as info;
-create or replace table flat_mart.job_postings as
-select
+SELECT '=== Loading Flat Mart ===' AS info;
+CREATE TABLE flat_mart.job_postings AS
+SELECT
     -- Fact table fields
     jpf.job_id,
     jpf.company_id,
@@ -26,27 +26,27 @@ select
     jpf.salary_hour_avg,
     -- Company dimension fields
     cd.company_id,
-    cd.name as company_name,
+    cd.name AS company_name,
     array_agg(
         struct_pack(
             name := sd.skills,
             type := sd.type
         )
-    ) as skills_and_types
-from
-    job_postings_fact as jpf
-left join
-    company_dim as cd
-    on jpf.company_id = cd.company_id
-left join
+    ) AS skills_and_types
+FROM
+    job_postings_fact AS jpf
+LEFT JOIN
+    company_dim AS cd
+    ON jpf.company_id = cd.company_id
+LEFT JOIN
     skills_job_dim sjd
-    on jpf.job_id = sjd.job_id
-left join
+    ON jpf.job_id = sjd.job_id
+LEFT JOIN
     skills_dim sd
-    on sjd.skill_id = sd.skill_id
-group by all;
+    ON sjd.skill_id = sd.skill_id
+GROUP BY all;
 
-select 'Flat Mart Job Postings' as table_name, count(*) as record_count from flat_mart.job_postings;
+SELECT 'Flat Mart Job Postings' AS table_name, count(*) AS record_count FROM flat_mart.job_postings;
 
-select '=== Flat Mart Sample ===' as info;
-select * from flat_mart.job_postings limit 10;
+SELECT '=== Flat Mart Sample ===' AS info;
+SELECT * FROM flat_mart.job_postings LIMIT 10;

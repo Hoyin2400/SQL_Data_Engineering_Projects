@@ -1,47 +1,47 @@
 -- Step 6: Mart - Update priority roles mart
 
-select '=== Updating Roles for Priority Mart ===' as info;
+SELECT '=== Updating Roles for Priority Mart ===' AS info;
 
 -- Update Data Engineer to Priority 1
-update priority_mart.priority_roles
-set priority_lvl = 1
-where role_name = 'Data Engineer';
+UPDATE priority_mart.priority_roles
+SET priority_lvl = 1
+WHERE role_name = 'Data Engineer';
 
--- Add Data Scientist as Level 3
-insert into priority_mart.priority_roles (role_id, role_name, priority_lvl)
-values (4, 'Data Scientist', 3);
+-- Add Data Scientist AS Level 3
+INSERT INTO priority_mart.priority_roles (role_id, role_name, priority_lvl)
+VALUES (4, 'Data Scientist', 3);
 
-select * from priority_mart.priority_roles;
+SELECT * FROM priority_mart.priority_roles;
 
 -- Create TEMP Table
-create or replace temp table src_priority_jobs as
-select
+CREATE OR REPLACE TEMP TABLE src_priority_jobs AS
+SELECT
     jpf.job_id,
     jpf.job_title_short,
-    cd.name as company_name,
+    cd.name AS company_name,
     jpf.job_posted_date,
     jpf.salary_year_avg,
     r.priority_lvl,
-    current_timestamp as updated_at
-from
-    job_postings_fact as jpf
-left join company_dim as cd
-    on jpf.company_id = cd.company_id
-inner join priority_mart.priority_roles as r
-    on jpf.job_title_short = r.role_name;
+    current_timestamp AS updated_at
+FROM
+    job_postings_fact AS jpf
+LEFT JOIN company_dim AS cd
+    ON jpf.company_id = cd.company_id
+INNER JOIN priority_mart.priority_roles AS r
+    ON jpf.job_title_short = r.role_name;
 
 -- MERGE INTO
-merge into priority_mart.priority_jobs_snapshot as tgt
-using src_priority_jobs as src
-on tgt.job_id = src.job_id
+MERGE INTO priority_mart.priority_jobs_snapshot AS tgt
+USING src_priority_jobs AS src
+ON tgt.job_id = src.job_id
 
-when matched and tgt.priority_lvl is distinct from src.priority_lvl then
-    update set
+WHEN MATCHED AND tgt.priority_lvl IS DISTINCT FROM src.priority_lvl THEN
+    UPDATE SET
         priority_lvl = src.priority_lvl,
         updated_at = src.updated_at
 
-when not matched then
-    insert (
+WHEN NOT MATCHED THEN
+    INSERT (
         job_id,
         job_title_short,
         company_name,
@@ -50,7 +50,7 @@ when not matched then
         priority_lvl,
         updated_at
     )
-    values (
+    VALUES (
         src.job_id,
         src.job_title_short,
         src.company_name,
@@ -60,15 +60,15 @@ when not matched then
         src.updated_at
     )
 
-when not matched by source then delete;
+WHEN NOT MATCHED by SOURCE THEN DELETE;
 
 
 -- Final Check Query
-select
+SELECT
     job_title_short,
-    count(*) as job_count,
-    min(priority_lvl) as priority_lvl,
-    min(updated_at) as updated_at
-from priority_mart.priority_jobs_snapshot
-group by job_title_short
-order by job_count desc;
+    COUNT(*) AS job_count,
+    MIN(priority_lvl) AS priority_lvl,
+    MIN(updated_at) AS updated_at
+FROM priority_mart.priority_jobs_snapshot
+GROUP BY job_title_short
+ORDER BY job_count DESC;

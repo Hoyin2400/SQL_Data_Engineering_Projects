@@ -1,38 +1,38 @@
 -- Step 4: Mart - Create skills demand mart
 
-drop schema if exists skills_mart cascade;
+DROP SCHEMA IF EXISTS skills_mart cascade;
 
-create schema skills_mart;
+CREATE SCHEMA skills_mart;
 
-select '=== Loading dim_skills Table ===' as info;
-create or replace table skills_mart.dim_skills (
-    skill_id    integer     primary key,
-    skills      varchar,
-    type        varchar
+SELECT '=== Loading dim_skills Table ===' AS info;
+CREATE TABLE skills_mart.dim_skills (
+    skill_id    INTEGER     PRIMARY KEY,
+    skills      VARCHAR,
+    type        VARCHAR
 );
 
-insert into skills_mart.dim_skills (
+INSERT INTO skills_mart.dim_skills (
     skill_id,
     skills,
     type
 )
-select
+SELECT
     skill_id,
     skills,
     type
-from skills_dim;
+FROM skills_dim;
 
-select '=== Loading dim_date_month Table ===' as info;
-create or replace table skills_mart.dim_date_month (
-    month_start_date    date    primary key,
-    year                integer,
-    month               integer,
-    quarter             integer,
-    quarter_name        varchar,
-    year_quarter        varchar
+SELECT '=== Loading dim_date_month Table ===' AS info;
+CREATE TABLE skills_mart.dim_date_month (
+    month_start_date    DATE    PRIMARY KEY,
+    year                INTEGER,
+    month               INTEGER,
+    quarter             INTEGER,
+    quarter_name        VARCHAR,
+    year_quarter        VARCHAR
 );
 
-insert into skills_mart.dim_date_month (
+INSERT INTO skills_mart.dim_date_month (
     month_start_date,
     year,            
     month,           
@@ -40,32 +40,32 @@ insert into skills_mart.dim_date_month (
     quarter_name,    
     year_quarter    
 )
-select distinct
-    date_trunc('month', job_posted_date) as month_start_date,
-    extract(year from job_posted_date) as year,
-    extract(month from job_posted_date) as month,
-    extract(quarter from job_posted_date) as quarter,
-    'Q-' || extract(quarter from job_posted_date)::varchar as quarter_name,
-    extract(year from job_posted_date)::varchar || '-Q' || 
-    extract(quarter from job_posted_date)::varchar as year_quarter
-from job_postings_fact
-order by month_start_date;
+SELECT DISTINCT
+    DATE_TRUNC('month', job_posted_date) AS month_start_date,
+    EXTRACT(year FROM job_posted_date) AS year,
+    EXTRACT(month FROM job_posted_date) AS month,
+    EXTRACT(quarter FROM job_posted_date) AS quarter,
+    'Q-' || EXTRACT(quarter FROM job_posted_date)::VARCHAR AS quarter_name,
+    EXTRACT(year FROM job_posted_date)::VARCHAR || '-Q' || 
+    EXTRACT(quarter FROM job_posted_date)::VARCHAR AS year_quarter
+FROM job_postings_fact
+ORDER BY month_start_date;
 
-select '=== Loading fact_skill_demand_monthly Table ===' as info;
-create or replace table skills_mart.fact_skill_demand_monthly (
-    skill_id                            integer,
-    month_start_date                    date,
-    job_title_short                     varchar,
-    postings_count                      integer,
-    remote_postings_count               integer,
-    health_insurance_postings_count     integer,
-    no_degree_mention_postings_count    integer,
-    primary key (skill_id, month_start_date, job_title_short),
-    foreign key (skill_id) references skills_mart.dim_skills(skill_id),
-    foreign key (month_start_date) references skills_mart.dim_date_month(month_start_date)
+SELECT '=== Loading fact_skill_demand_monthly Table ===' AS info;
+CREATE TABLE skills_mart.fact_skill_demand_monthly (
+    skill_id                            INTEGER,
+    month_start_date                    DATE,
+    job_title_short                     VARCHAR,
+    postings_count                      INTEGER,
+    remote_postings_count               INTEGER,
+    health_insurance_postings_count     INTEGER,
+    no_degree_mention_postings_count    INTEGER,
+    PRIMARY KEY (skill_id, month_start_date, job_title_short),
+    FOREIGN KEY (skill_id) REFERENCES skills_mart.dim_skills(skill_id),
+    FOREIGN KEY (month_start_date) REFERENCES skills_mart.dim_date_month(month_start_date)
 );
 
-insert into skills_mart.fact_skill_demand_monthly (
+INSERT INTO skills_mart.fact_skill_demand_monthly (
     skill_id,                        
     month_start_date,                
     job_title_short,                 
@@ -74,47 +74,47 @@ insert into skills_mart.fact_skill_demand_monthly (
     health_insurance_postings_count, 
     no_degree_mention_postings_count
 )
-with job_postings_prep as (
-    select
+WITH job_postings_prep AS (
+    SELECT
         sjd.skill_id,
-        date_trunc('month', jpf.job_posted_date) as month_start_date,
+        DATE_TRUNC('month', jpf.job_posted_date) AS month_start_date,
         jpf.job_title_short,
         -- convert boolean flags (1 or 0)
-        case when jpf.job_work_from_home = true then 1 else 0 end as is_remote,
-        case when jpf.job_health_insurance = true then 1 else 0 end as has_health_insurance,
-        case when jpf.job_no_degree_mention = true then 1 else 0 end as no_degree_mentioned
-    from 
-        job_postings_fact as jpf
-    inner join
-        skills_job_dim as sjd
-        on sjd.job_id = jpf.job_id
+        CASE WHEN jpf.job_work_from_home = true THEN 1 ELSE 0 END AS is_remote,
+        CASE WHEN jpf.job_health_insurance = true THEN 1 ELSE 0 END AS has_health_insurance,
+        CASE WHEN jpf.job_no_degree_mention = true THEN 1 ELSE 0 END AS no_degree_mentioned
+    FROM 
+        job_postings_fact AS jpf
+    INNER JOIN
+        skills_job_dim AS sjd
+        ON sjd.job_id = jpf.job_id
 )
-select
+SELECT
     skill_id,
     month_start_date,
     job_title_short,
-    count(*) as postings_count,
-    sum(is_remote) as remote_postings_count,
-    sum(has_health_insurance) as health_insurance_postings_count,
-    sum(no_degree_mentioned) as no_degree_mention_postings_count
-from
+    COUNT(*) AS postings_count,
+    SUM(is_remote) AS remote_postings_count,
+    SUM(has_health_insurance) AS health_insurance_postings_count,
+    SUM(no_degree_mentioned) AS no_degree_mention_postings_count
+FROM
     job_postings_prep
-group by all
-order by skill_id, month_start_date, job_title_short;
+GROUP BY all
+ORDER BY skill_id, month_start_date, job_title_short;
 
 
 
-select 'Skills Dimension', count(*) from skills_mart.dim_skills
-union all
-select 'Date Month Dimension' as table_name, count(*) as record_count from skills_mart.dim_date_month
-union all
-select 'Skill Demand Fact', count(*) from skills_mart.fact_skill_demand_monthly;
+SELECT 'Skills Dimension', COUNT(*) FROM skills_mart.dim_skills
+UNION ALL
+SELECT 'Date Month Dimension' AS table_name, COUNT(*) AS record_count FROM skills_mart.dim_date_month
+UNION ALL
+SELECT 'Skill Demand Fact', COUNT(*) FROM skills_mart.fact_skill_demand_monthly;
 
-select '=== Skills Dimension Sample ===' as info;
-select * from skills_mart.dim_skills limit 5;
+SELECT '=== Skills Dimension Sample ===' AS info;
+SELECT * FROM skills_mart.dim_skills LIMIT 5;
 
-select '=== Date Month Dimension Sample ===' as info;
-select * from skills_mart.dim_date_month limit 5;
+SELECT '=== Date Month Dimension Sample ===' AS info;
+SELECT * FROM skills_mart.dim_date_month LIMIT 5;
 
-select '=== Skill Demand Sample ===' as info;
-select * from skills_mart.fact_skill_demand_monthly limit 5;
+SELECT '=== Skill Demand Sample ===' AS info;
+SELECT * FROM skills_mart.fact_skill_demand_monthly LIMIT 5;
