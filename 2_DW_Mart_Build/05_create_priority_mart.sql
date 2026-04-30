@@ -50,9 +50,9 @@ SELECT
 FROM
     job_postings_fact AS jpf
 LEFT JOIN company_dim AS cd
-    on jpf.company_id = cd.company_id
+    ON jpf.company_id = cd.company_id
 INNER JOIN priority_mart.priority_roles AS r
-    on jpf.job_title_short = r.role_name;
+    ON jpf.job_title_short = r.role_name;
 
 SELECT
     job_title_short,
